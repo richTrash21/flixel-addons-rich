@@ -34,4 +34,4 @@ class FlxKeyboardEvent implements IFlxDestroyable
 	}
 }
 
-typedef FlxKeyboardEventCallback = (status:FlxInputState) -> Void;
+typedef FlxKeyboardEventCallback = (keyList:Array<FlxKey>, status:FlxInputState) -> Void;
