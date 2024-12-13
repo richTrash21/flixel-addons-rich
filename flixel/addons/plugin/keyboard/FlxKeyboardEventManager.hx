@@ -62,28 +62,28 @@ class FlxKeyboardEventManager extends FlxBasic
 		{
 			// key combination was just released
 			if (pressed.onJustReleased != null && currentPressedList.indexOf(pressed) == -1)
-				pressed.onJustReleased(JUST_RELEASED);
+				pressed.onJustReleased(pressed.keyList, JUST_RELEASED);
 		}
 		
 		for (released in releasedList)
 		{
 			// key combination was just pressed
 			if (released.onJustPressed != null && currentReleasedList.indexOf(released) == -1)
-				released.onJustPressed(JUST_PRESSED);
+				released.onJustPressed(released.keyList, JUST_PRESSED);
 		}
 		
 		for (currentPressed in currentPressedList)
 		{
 			// key combination is currently pressed
 			if (currentPressed.onPressed != null)
-				currentPressed.onPressed(PRESSED);
+				currentPressed.onPressed(currentPressed.keyList, PRESSED);
 		}
 		
 		for (currentReleased in currentReleasedList)
 		{
 			// key combination is currently released
 			if (currentReleased.onReleased != null)
-				currentReleased.onReleased(RELEASED);
+				currentReleased.onReleased(currentReleased.keyList, RELEASED);
 		}
 		
 		pressedList = currentPressedList;
