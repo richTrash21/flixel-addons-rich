@@ -2,19 +2,16 @@ package flixel.addons.plugin.keyboard;
 
 import flixel.FlxBasic;
 import flixel.FlxG;
-import flixel.addons.plugin.keyboard.FlxKeyboardEvent.FlxKeyboardEventCallback;
+import flixel.addons.plugin.keyboard.FlxKeyboardEvent.KeyboardEventCallback;
 import flixel.input.FlxInput.FlxInputState;
 import flixel.input.keyboard.FlxKey;
 import flixel.util.FlxArrayUtil;
 import flixel.util.FlxDestroyUtil;
 
 /**
- * Simple class for managing keyboard key presses.
- * Mostly used for managing key combinations (CTRL + C, CTRL + V, etc.).
- *
- * TODO: gamepad input manager or smth like this
- * TODO: docs
- *
+ * Simple keyboard event registry.
+ * Mostly used for managing key combinations such as CTRL + C, CTRL + V, etc.
+ * 
  * @author richTrash21
  */
 class FlxKeyboardEventManager extends FlxBasic
@@ -44,9 +41,10 @@ class FlxKeyboardEventManager extends FlxBasic
 	{
 		super.update(elapsed);
 		
-		if (!isActive())
+		#if FLX_KEYBOARD
+		if (!FlxG.keys.enabled)
 			return;
-			
+		
 		var currentPressedList:Array<FlxKeyboardEvent> = [];
 		var currentReleasedList:Array<FlxKeyboardEvent> = [];
 		
@@ -62,54 +60,55 @@ class FlxKeyboardEventManager extends FlxBasic
 		{
 			// key combination was just released
 			if (pressed.onJustReleased != null && currentPressedList.indexOf(pressed) == -1)
-				pressed.onJustReleased(pressed.keyList, JUST_RELEASED);
+				pressed.onJustReleased(pressed.keyList);
 		}
 		
 		for (released in releasedList)
 		{
 			// key combination was just pressed
 			if (released.onJustPressed != null && currentReleasedList.indexOf(released) == -1)
-				released.onJustPressed(released.keyList, JUST_PRESSED);
+				released.onJustPressed(released.keyList);
 		}
 		
 		for (currentPressed in currentPressedList)
 		{
 			// key combination is currently pressed
 			if (currentPressed.onPressed != null)
-				currentPressed.onPressed(currentPressed.keyList, PRESSED);
+				currentPressed.onPressed(currentPressed.keyList);
 		}
 		
 		for (currentReleased in currentReleasedList)
 		{
 			// key combination is currently released
 			if (currentReleased.onReleased != null)
-				currentReleased.onReleased(currentReleased.keyList, RELEASED);
+				currentReleased.onReleased(currentReleased.keyList);
 		}
 		
 		pressedList = currentPressedList;
 		releasedList = currentReleasedList;
+		#end
 	}
 	
 	/**
-	 * Adds the key combination event to the FlxMouseEventManager registry.
+	 * Adds the key combination event to `this` registry.
 	 *
 	 * @param   keyList          List of keys that dispatches this event.
 	 * @param   onPressed        Callback when key combination is pressed.
 	 * @param   onJustPressed    Callback when key combination was just pressed.
 	 * @param   onReleased       Callback when key combination is released.
 	 * @param   onJustReleased   Callback when key combination was just released.
-	 * @return  Added event.
+	 * @param   pressAllKeys     If true, all keys need to be pressed to trigger `onPressed`
+	 *                           and `onJustPressed` callbacks.
 	 */
-	public function add(keyList:Array<FlxKey>, ?onPressed:FlxKeyboardEventCallback, ?onJustPressed:FlxKeyboardEventCallback,
-			?onReleased:FlxKeyboardEventCallback, ?onJustReleased:FlxKeyboardEventCallback):FlxKeyboardEvent
+	public function add(keyList:Array<FlxKey>, ?onPressed:KeyboardEventCallback, ?onJustPressed:KeyboardEventCallback, ?onReleased:KeyboardEventCallback,
+			?onJustReleased:KeyboardEventCallback, pressAllKeys = true):Void
 	{
-		var event = new FlxKeyboardEvent(keyList, onPressed, onJustPressed, onReleased, onJustReleased);
+		var event = new FlxKeyboardEvent(keyList, onPressed, onJustPressed, onReleased, onJustReleased, pressAllKeys);
 		list.push(event);
-		return event;
 	}
 	
 	/**
-	 *
+	 * Removes the key combination from `this` registry.
 	 */
 	public function remove(keyList:Array<FlxKey>):Void
 	{
@@ -124,7 +123,7 @@ class FlxKeyboardEventManager extends FlxBasic
 	}
 	
 	/**
-	 *
+	 * Removes all registered key combinations from `this` registry.
 	 */
 	public function removeAll():Void
 	{
@@ -134,9 +133,12 @@ class FlxKeyboardEventManager extends FlxBasic
 	}
 	
 	/**
+	 * Sets the onPressed callback associated with the key combination.
 	 *
+	 * @param   onPressed   Callback when the key combination is pressed.
+	 *                      Must have key combination list as argument - e.g. `onPressed(keyList:Array<FlxKey>)`.
 	 */
-	public function setPressedCallback(keyList:Array<FlxKey>, onPressed:FlxKeyboardEventCallback):Void
+	public function setPressedCallback(keyList:Array<FlxKey>, onPressed:KeyboardEventCallback):Void
 	{
 		var event = get(keyList);
 		if (event != null)
@@ -144,9 +146,12 @@ class FlxKeyboardEventManager extends FlxBasic
 	}
 	
 	/**
+	 * Sets the onJustPressed callback associated with the key combination.
 	 *
+	 * @param   onJustPressed   Callback when the key combination was just pressed.
+	 *                          Must have key combination list as argument - e.g. `onJustPressed(keyList:Array<FlxKey>)`.
 	 */
-	public function setJustPressedCallback(keyList:Array<FlxKey>, onJustPressed:FlxKeyboardEventCallback):Void
+	public function setJustPressedCallback(keyList:Array<FlxKey>, onJustPressed:KeyboardEventCallback):Void
 	{
 		var event = get(keyList);
 		if (event != null)
@@ -154,9 +159,12 @@ class FlxKeyboardEventManager extends FlxBasic
 	}
 	
 	/**
+	 * Sets the onReleased callback associated with the key combination.
 	 *
+	 * @param   onReleased   Callback when the key combination is released.
+	 *                       Must have key combination list as argument - e.g. `onReleased(keyList:Array<FlxKey>)`.
 	 */
-	public function setReleasedCallback(keyList:Array<FlxKey>, onReleased:FlxKeyboardEventCallback):Void
+	public function setReleasedCallback(keyList:Array<FlxKey>, onReleased:KeyboardEventCallback):Void
 	{
 		var event = get(keyList);
 		if (event != null)
@@ -164,9 +172,12 @@ class FlxKeyboardEventManager extends FlxBasic
 	}
 	
 	/**
+	 * Sets the onJustReleased callback associated with the key combination.
 	 *
+	 * @param   onJustReleased   Callback when the key combination was just released.
+	 *                           Must have key combination list as argument - e.g. `onJustReleased(keyList:Array<FlxKey>)`.
 	 */
-	public function setJustReleasedCallback(keyList:Array<FlxKey>, onJustReleased:FlxKeyboardEventCallback):Void
+	public function setJustReleasedCallback(keyList:Array<FlxKey>, onJustReleased:KeyboardEventCallback):Void
 	{
 		var event = get(keyList);
 		if (event != null)
@@ -178,7 +189,7 @@ class FlxKeyboardEventManager extends FlxBasic
 		for (event in list)
 			if (checkKeys(event, keyList))
 				return event;
-				
+		
 		return null;
 	}
 	
@@ -189,9 +200,12 @@ class FlxKeyboardEventManager extends FlxBasic
 		#if FLX_KEYBOARD
 		for (key in event.keyList)
 		{
-			if (isKeyPressed(key))
+			if (FlxG.keys.checkStatus(key, PRESSED))
 			{
 				result = true;
+				// leave the loop if only one the keys should be pressed
+				if (!event.pressAllKeys)
+					break;
 			}
 			else
 			{
@@ -204,28 +218,6 @@ class FlxKeyboardEventManager extends FlxBasic
 		return result;
 	}
 	
-	// TODO: override for gamepad button manager
-	function isKeyPressed(key:FlxKey)
-	{
-		#if FLX_KEYBOARD
-		return FlxG.keys.checkStatus(key, PRESSED);
-		#else
-		return false;
-		#end
-	}
-	
-	// TODO: override for gamepad button manager
-	function isActive()
-	{
-		#if FLX_KEYBOARD
-		return FlxG.keys.enabled;
-		#else
-		return false;
-		#end
-	}
-	
-	inline function checkKeys(event:FlxKeyboardEvent, keyList:Array<FlxKey>)
-	{
+	inline function checkKeys(event:FlxKeyboardEvent, keyList:Array<FlxKey>):Bool
 		return FlxArrayUtil.equals(event.keyList, keyList);
-	}
 }
