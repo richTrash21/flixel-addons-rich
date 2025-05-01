@@ -18,6 +18,7 @@ import flixel.math.FlxPoint;
  * creates a trail effect for the character in his game.
  * Feel free to use this class and adjust it to your needs.
  * @author Gama11
+ * @author edited by richTrash21
  */
 class FlxTrail extends #if (flixel < version("5.7.0")) FlxSpriteGroup #else FlxSpriteContainer #end
 {
@@ -34,7 +35,7 @@ class FlxTrail extends #if (flixel < version("5.7.0")) FlxSpriteGroup #else FlxS
 	/**
 	 * How often to update the trail.
 	 */
-	@:deprecated("delay is deprecated, use interval instead")
+	@:deprecated("delay is deprecated, use interval, instead")
 	public var delay(default, set):Int;
 	
 	/**
@@ -59,6 +60,7 @@ class FlxTrail extends #if (flixel < version("5.7.0")) FlxSpriteGroup #else FlxS
 	
 	/**
 	 * Whether to check for frame changes of the "parent" FlxSprite or not.
+	 * Have no effect if custom graphic is set.
 	 */
 	public var framesEnabled:Bool = true;
 	
@@ -66,16 +68,6 @@ class FlxTrail extends #if (flixel < version("5.7.0")) FlxSpriteGroup #else FlxS
 	 * Counts the time passed.
 	 */
 	var _timer:Float;
-	
-	/**
-	 * Counts the frames passed.
-	 */
-	// var _counter:Int = 0;
-	
-	/**
-	 * How long is the trail?
-	 */
-	// var _trailLength:Int = 0;
 	
 	/**
 	 * How many trail frames were added.
@@ -90,26 +82,12 @@ class FlxTrail extends #if (flixel < version("5.7.0")) FlxSpriteGroup #else FlxS
 	/**
 	 * The alpha value for the next trailsprite.
 	 */
-	var _transp:Float = 1;
+	var _transp:Float;
 	
 	/**
 	 * How much lower the alpha value of the next trailsprite is.
 	 */
 	var _difference:Float;
-	
-	var _recentPositions:Array<FlxPoint> = [];
-	var _recentAngles:Array<Float> = [];
-	var _recentOrigins:Array<FlxPoint> = [];
-	var _recentScales:Array<FlxPoint> = [];
-	var _recentFrames:Array<Int> = [];
-	var _recentFlipX:Array<Bool> = [];
-	var _recentFlipY:Array<Bool> = [];
-	// var _recentAnimations:Array<String> = []; // FlxAnimation
-	
-	/**
-	 * Stores the sprite origin (rotation axis)
-	 */
-	// var _spriteOrigin:FlxPoint;
 	
 	/**
 	 * Creates a new FlxTrail effect for a specific FlxSprite.
@@ -125,11 +103,8 @@ class FlxTrail extends #if (flixel < version("5.7.0")) FlxSpriteGroup #else FlxS
 	{
 		super();
 		
-		// _spriteOrigin = FlxPoint.get().copyFrom(target.origin);
-		
 		// Sync the vars
 		this.target = target;
-		// TODO: replace delay in constructor with interval?
 		this.delay = delay;
 		_graphic = graphic;
 		_transp = alpha;
@@ -142,18 +117,6 @@ class FlxTrail extends #if (flixel < version("5.7.0")) FlxSpriteGroup #else FlxS
 	
 	override public function destroy():Void
 	{
-		_recentPositions = FlxDestroyUtil.putArray(_recentPositions);
-		_recentScales = FlxDestroyUtil.putArray(_recentScales);
-		_recentOrigins = FlxDestroyUtil.putArray(_recentOrigins);
-		
-		_recentAngles = null;
-		_recentFrames = null;
-		_recentFlipX = null;
-		_recentFlipY = null;
-		// _recentAnimations = null;
-		
-		// _spriteOrigin = FlxDestroyUtil.put(_spriteOrigin);
-		
 		target = null;
 		_graphic = null;
 		
@@ -166,12 +129,11 @@ class FlxTrail extends #if (flixel < version("5.7.0")) FlxSpriteGroup #else FlxS
 	override public function update(elapsed:Float):Void
 	{
 		// Count the frames
-		_timer += elapsed; // _counter++;
+		_timer += elapsed;
 		
 		// Update the trail in case the interval and there actually is one.
-		if (_timer >= interval && length > 0) // (_counter >= delay && _trailLength >= 1)
+		if (_timer >= interval && length > 0)
 		{
-			// _counter = 0;
 			_timer -= interval;
 			addTrailFrame();
 			
@@ -182,39 +144,33 @@ class FlxTrail extends #if (flixel < version("5.7.0")) FlxSpriteGroup #else FlxS
 		super.update(elapsed);
 	}
 	
-	inline function recyclePoint(list:Array<FlxPoint>, x:Float, y:Float)
-	{
-		final pos = if (list.length >= length) // _trailLength
-			list.pop().set(x, y);
-		else
-			FlxPoint.get(x, y);
-		
-		list.unshift(pos);
-	}
-	
 	function addTrailFrame()
 	{
-		// Push the current position into the positons array and drop one.
-		if (xEnabled || yEnabled)
-			recyclePoint(_recentPositions, target.x - target.offset.x, target.y - target.offset.y);
+		var trailSprite = getFirst((basic)->!basic.exists);
+		if (trailSprite == null)
+		{
+			trailSprite = members.shift();
+			add(trailSprite);
+		}
 		
-		// Also do the same thing for the Sprites angle if rotationsEnabled
+		if (xEnabled)
+			trailSprite.x = target.x - target.offset.x;
+		if (yEnabled)
+			trailSprite.y = target.y - target.offset.y;
+		
 		if (rotationsEnabled)
-			cacheValue(_recentAngles, target.angle);
+			trailSprite.angle = target.angle;
 		
-		recyclePoint(_recentOrigins, target.origin.x, target.origin.y);
+		trailSprite.origin.copyFrom(target.origin);
 		
-		// Again the same thing for Sprites scales if scalesEnabled
 		if (scalesEnabled)
-			recyclePoint(_recentScales, target.scale.x, target.scale.y);
+			trailSprite.scale.copyFrom(target.scale);
 		
-		// Again the same thing for Sprites frames if framesEnabled
 		if (framesEnabled && _graphic == null)
 		{
-			cacheValue(_recentFrames, target.animation.frameIndex);
-			cacheValue(_recentFlipX, target.flipX);
-			cacheValue(_recentFlipY, target.flipY);
-			// cacheValue(_recentAnimations, target.animation.curAnim.name);
+			trailSprite.animation.frameIndex = target.animation.frameIndex;
+			trailSprite.flipX = target.flipX;
+			trailSprite.flipY = target.flipY;
 		}
 		
 		_trailFrames = FlxMath.minInt(_trailFrames + 1, length);
@@ -225,52 +181,15 @@ class FlxTrail extends #if (flixel < version("5.7.0")) FlxSpriteGroup #else FlxS
 		for (i in 0..._trailFrames)
 		{
 			final trailSprite = members[i];
-			trailSprite.x = xEnabled ? _recentPositions[i].x : target.x - target.offset.x;
-			trailSprite.y = yEnabled ? _recentPositions[i].y : target.y - target.offset.y;
-			
-			// And the angle...
-			if (rotationsEnabled)
-				trailSprite.angle = _recentAngles[i];
-			
-			trailSprite.origin.copyFrom(_recentOrigins[i]); // _spriteOrigin;
-			
-			// the scale...
-			if (scalesEnabled)
-				trailSprite.scale.copyFrom(_recentScales[i]);
-			
-			// and frame...
-			if (framesEnabled && _graphic == null)
-			{
-				trailSprite.animation.frameIndex = _recentFrames[i];
-				trailSprite.flipX = _recentFlipX[i];
-				trailSprite.flipY = _recentFlipY[i];
-				// trailSprite.animation.curAnim = trailSprite.animation.getByName(_recentAnimations[i]);
-			}
+			trailSprite.alpha = _transp - _difference * i;
 			
 			// Is the trailsprite even visible?
 			trailSprite.exists = true;
 		}
 	}
 	
-	function cacheValue<T>(array:Array<T>, value:T)
-	{
-		array.unshift(value);
-		if (array.length > length) // _trailLength
-			array.resize(length); // _trailLength
-	}
-	
 	public function resetTrail():Void
 	{
-		FlxDestroyUtil.putArray(_recentPositions);
-		FlxDestroyUtil.putArray(_recentScales);
-		FlxDestroyUtil.putArray(_recentOrigins);
-		
-		_recentAngles.resize(0);
-		_recentFrames.resize(0);
-		_recentFlipX.resize(0);
-		_recentFlipY.resize(0);
-		// _recentAnimations.resize(0);
-		
 		for (trailSprite in members)
 			trailSprite.exists = false;
 		
@@ -288,8 +207,6 @@ class FlxTrail extends #if (flixel < version("5.7.0")) FlxSpriteGroup #else FlxS
 		if (amount < 1)
 			return;
 		
-		// _trailLength += amount;
-		
 		// Create the trail sprites
 		for (i in 0...amount)
 		{
@@ -303,10 +220,8 @@ class FlxTrail extends #if (flixel < version("5.7.0")) FlxSpriteGroup #else FlxS
 			trailSprite.active = false;
 			add(trailSprite);
 			
-			trailSprite.alpha = _transp;
-			_transp -= _difference;
 			trailSprite.solid = solid;
-			trailSprite.exists = false; // trailSprite.alpha != 0
+			trailSprite.exists = false;
 		}
 	}
 	
@@ -324,6 +239,40 @@ class FlxTrail extends #if (flixel < version("5.7.0")) FlxSpriteGroup #else FlxS
 			for (trailSprite in members)
 				trailSprite.loadGraphic(graphic);
 		}
+	}
+	
+	/**
+	 * In case you want to change the trailsprite target in runtime...
+	 *
+	 * @param  target  The new target to follow.
+	 * @param  reset   Should trail reset on target change?
+	 */
+	public function changeTarget(target:FlxSprite, reset = true):Void
+	{
+		this.target = target;
+		
+		if (graphic == null)
+		{
+			for (trailSprite in members)
+				trailSprite.loadGraphicFromSprite(target);
+		}
+		
+		if (reset)
+			resetTrail();
+	}
+	
+	/**
+	 * Change transparency of the trail.
+	 * 
+	 * @param   alpha  The alpha value for the very first trailsprite.
+	 * @param   diff   How much lower the alpha of the next trailsprite is.
+	 */
+	public function changeTransparency(alpha = 0.4, diff = 0.05):Void
+	{
+		_transp = alpha;
+		_difference = diff;
+		
+		redrawTrailSprites();
 	}
 	
 	/**
