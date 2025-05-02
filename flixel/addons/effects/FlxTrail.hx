@@ -1,6 +1,5 @@
 package flixel.addons.effects;
 
-// import flixel.animation.FlxAnimation;
 import flixel.FlxG;
 import flixel.FlxSprite;
 #if (flixel < version("5.7.0"))
@@ -11,6 +10,7 @@ import flixel.group.FlxSpriteContainer;
 import flixel.system.FlxAssets.FlxGraphicAsset;
 import flixel.util.FlxDestroyUtil;
 import flixel.math.FlxPoint;
+import flixel.math.FlxMath;
 
 /**
  * Nothing too fancy, just a handy little class to attach a trail effect to a FlxSprite.
@@ -70,7 +70,7 @@ class FlxTrail extends #if (flixel < version("5.7.0")) FlxSpriteGroup #else FlxS
 	var _timer:Float;
 	
 	/**
-	 * How many trail frames were added.
+	 * How many trail frames are drawn.
 	 */
 	var _trailFrames:Int = 0;
 	
@@ -99,6 +99,7 @@ class FlxTrail extends #if (flixel < version("5.7.0")) FlxSpriteGroup #else FlxS
 	 * @param   alpha    The alpha value for the very first trailsprite.
 	 * @param   diff     How much lower the alpha of the next trailsprite is.
 	 */
+	@:haxe.warning("-WDeprecated")
 	public function new(target:FlxSprite, ?graphic:FlxGraphicAsset, length = 10, delay = 3, alpha = 0.4, diff = 0.05):Void
 	{
 		super();
@@ -146,26 +147,33 @@ class FlxTrail extends #if (flixel < version("5.7.0")) FlxSpriteGroup #else FlxS
 	
 	function addTrailFrame()
 	{
-		var trailSprite = getFirst((basic)->!basic.exists);
+		// Grab first not drawn trailsprite.
+		var trailSprite = group.getFirst((basic) -> !basic.exists);
+		// If null - grab first one and rearrange it to the end.
 		if (trailSprite == null)
 		{
 			trailSprite = members.shift();
-			add(trailSprite);
+			members.push(trailSprite);
 		}
 		
+		// Configure trailsprite position if needed.
 		if (xEnabled)
 			trailSprite.x = target.x - target.offset.x;
 		if (yEnabled)
 			trailSprite.y = target.y - target.offset.y;
 		
+		// Configure trailsprite rotation if needed.
 		if (rotationsEnabled)
 			trailSprite.angle = target.angle;
 		
+		// Configure trailsprite origin.
 		trailSprite.origin.copyFrom(target.origin);
 		
+		// Configure trailsprite scale if needed.
 		if (scalesEnabled)
 			trailSprite.scale.copyFrom(target.scale);
 		
+		// Configure trailsprite frame if needed.
 		if (framesEnabled && _graphic == null)
 		{
 			trailSprite.animation.frameIndex = target.animation.frameIndex;
@@ -173,6 +181,7 @@ class FlxTrail extends #if (flixel < version("5.7.0")) FlxSpriteGroup #else FlxS
 			trailSprite.flipY = target.flipY;
 		}
 		
+		// Count drawn frames.
 		_trailFrames = FlxMath.minInt(_trailFrames + 1, length);
 	}
 	
@@ -181,7 +190,8 @@ class FlxTrail extends #if (flixel < version("5.7.0")) FlxSpriteGroup #else FlxS
 		for (i in 0..._trailFrames)
 		{
 			final trailSprite = members[i];
-			trailSprite.alpha = _transp - _difference * i;
+			// Configure trailsprite alpha.
+			trailSprite.alpha = _transp - _difference * (_trailFrames - i - 1);
 			
 			// Is the trailsprite even visible?
 			trailSprite.exists = true;
@@ -210,18 +220,14 @@ class FlxTrail extends #if (flixel < version("5.7.0")) FlxSpriteGroup #else FlxS
 		// Create the trail sprites
 		for (i in 0...amount)
 		{
-			final trailSprite = new FlxSprite();
-			
+			final trailSprite = new FlxSprite(_graphic);
 			if (_graphic == null)
 				trailSprite.loadGraphicFromSprite(target);
-			else
-				trailSprite.loadGraphic(_graphic);
 			
 			trailSprite.active = false;
-			add(trailSprite);
-			
-			trailSprite.solid = solid;
 			trailSprite.exists = false;
+			trailSprite.solid = solid;
+			add(trailSprite);
 		}
 	}
 	
@@ -238,6 +244,11 @@ class FlxTrail extends #if (flixel < version("5.7.0")) FlxSpriteGroup #else FlxS
 		{
 			for (trailSprite in members)
 				trailSprite.loadGraphic(graphic);
+		}
+		else
+		{
+			for (trailSprite in members)
+				trailSprite.loadGraphicFromSprite(target);
 		}
 	}
 	
